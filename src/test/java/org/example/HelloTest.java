@@ -17,7 +17,8 @@ public class HelloTest {
                 .get("https://playground.learnqa.ru/api/hello")
                 .andReturn();
 
-        assertEquals(200, response.statusCode());
-        assertEquals("{\"answer\":\"Hello, someone\"}", response.body().asString());
+        assertEquals(200, response.statusCode(), "Код ответа не соответствует ожидаемому");
+        assertEquals("{\"answer\":\"Hello, someone\"}", response.body().asString(),
+                "JSON ответа не соответствует ожидаемому");
     }
 }

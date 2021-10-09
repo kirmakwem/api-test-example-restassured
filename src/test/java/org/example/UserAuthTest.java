@@ -9,10 +9,15 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 
+import static org.example.api.ApiHeaders.SET_COOKIE;
+import static org.example.api.ApiHeaders.X_CSRF_TOKEN;
 import static org.example.api.ApiParams.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class UserAuthTest extends TestBase {
+
+    private static final String UNEXPECTED_STATUS_CODE_MESSAGE = "Код ответа не соответствует ожидаемому";
+    private static final String RESPONSE_BODY_DOESNT_CONTAIN_PARAM = "Тело ответа не содержит параметр ";
 
     @DisplayName("Успешно логинимся при отправке с корректных параметров")
     @Test
@@ -30,9 +35,13 @@ public class UserAuthTest extends TestBase {
 
         Response response = apiMethods.makePostRequest(Endpoints.LOGIN, loginBody);
 
-        assertEquals(200, response.statusCode());
-        assertTrue(checker.responseHasToken(response));
-        assertTrue(checker.responseHasCookie(response));
+        assertEquals(200, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+
+        assertTrue(checker.responseHasToken(response),
+                "Ответ НЕ содержит хэдера " + X_CSRF_TOKEN);
+
+        assertTrue(checker.responseHasCookie(response),
+                "Ответ НЕ содержит хэдера " + SET_COOKIE);
     }
 
     @DisplayName("Получаем ошибку при логине с некорректными параметрами")
@@ -46,9 +55,13 @@ public class UserAuthTest extends TestBase {
 
         Response response = apiMethods.makePostRequest(Endpoints.LOGIN, loginParams);
 
-        assertEquals(400, response.statusCode());
-        assertFalse(checker.responseHasToken(response));
-        assertFalse(checker.responseHasCookie(response));
+        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+
+        assertFalse(checker.responseHasToken(response),
+                "Ответ содержит хэдер " + X_CSRF_TOKEN);
+
+        assertFalse(checker.responseHasCookie(response),
+                "Ответ содержит хэдер " + SET_COOKIE);
     }
 
     @DisplayName("Получаем корректный ответ при запросе данных НЕавторизованного пользователя по его id")
@@ -65,8 +78,10 @@ public class UserAuthTest extends TestBase {
         Response getUserResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId);
         String responseAsString = responseHelper.getResponseBody(getUserResponse);
 
-        assertEquals(200, getUserResponse.statusCode());
-        assertTrue(checker.responseHasField(responseAsString, USERNAME));
+        assertEquals(200, getUserResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+
+        assertTrue(checker.responseHasField(responseAsString, USERNAME),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + USERNAME);
     }
 
     @DisplayName("Получаем корректный ответ при запросе данных авторизованного пользователя по его id")
@@ -92,11 +107,19 @@ public class UserAuthTest extends TestBase {
         Response getUserResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId, token, cookie);
         String responseAsString = responseHelper.getResponseBody(getUserResponse);
 
-        assertEquals(200, getUserResponse.statusCode());
-        assertTrue(checker.responseHasField(responseAsString, FIRST_NAME));
-        assertTrue(checker.responseHasField(responseAsString, LAST_NAME));
-        assertTrue(checker.responseHasField(responseAsString, EMAIL));
-        assertTrue(checker.responseHasField(responseAsString, ID));
+        assertEquals(200, getUserResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+
+        assertTrue(checker.responseHasField(responseAsString, FIRST_NAME),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + FIRST_NAME);
+
+        assertTrue(checker.responseHasField(responseAsString, LAST_NAME),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + LAST_NAME);
+
+        assertTrue(checker.responseHasField(responseAsString, EMAIL),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + EMAIL);
+
+        assertTrue(checker.responseHasField(responseAsString, ID),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + ID);
     }
 
     @DisplayName("Параметры пользователя успешно обновляются")
@@ -116,7 +139,7 @@ public class UserAuthTest extends TestBase {
                 .build();
 
         Response loginResponse = apiMethods.makePostRequest(Endpoints.LOGIN , loginBody);
-        assertEquals(200, loginResponse.statusCode());
+        assertEquals(200, loginResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
         String loginResponseString = responseHelper.getResponseBody(loginResponse);
         String cookie = responseHelper.getCookies(loginResponse);
         String token = responseHelper.getXcsrfToken(loginResponse);
@@ -128,13 +151,17 @@ public class UserAuthTest extends TestBase {
                 .build();
 
         Response response = apiMethods.makePutRequest(Endpoints.USER, newUserData, token, cookie);
-        assertEquals(200, response.statusCode());
+        assertEquals(200, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
 
         Response getResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId, token, cookie);
         String getResponseString = responseHelper.getResponseBody(getResponse);
 
-        assertEquals(200, getResponse.statusCode());
-        assertEquals(newFirstName, responseHelper.getFieldValue(getResponseString, FIRST_NAME));
-        assertEquals(newLastName, responseHelper.getFieldValue(getResponseString, LAST_NAME));
+        assertEquals(200, getResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+
+        assertEquals(newFirstName, responseHelper.getFieldValue(getResponseString, FIRST_NAME),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + FIRST_NAME);
+
+        assertEquals(newLastName, responseHelper.getFieldValue(getResponseString, LAST_NAME),
+                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + LAST_NAME);
     }
 }
