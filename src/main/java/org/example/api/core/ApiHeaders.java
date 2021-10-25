@@ -1,8 +1,5 @@
-package org.example.api;
+package org.example.api.core;
 
-/*
-Класс для хранения названий хэдеров и связанных с ними параметров
- */
 public class ApiHeaders {
     public static final String X_CSRF_TOKEN = "x-csrf-token";
     public static final String SET_COOKIE= "Set-Cookie";

@@ -1,39 +1,26 @@
 package org.example;
 
+import io.qameta.allure.Feature;
 import io.restassured.response.Response;
 import org.example.builders.RequestParamsBuilder;
-import org.example.builders.UserBuilder;
+import org.example.builders.UserJsonBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.example.api.ApiParams.ID;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.example.CoreTest.FEATURE_USER_CREATE;
+import static org.example.api.core.ApiParams.ID;
 
+@Feature(FEATURE_USER_CREATE)
 public class CreateUserTest extends TestBase {
-
-    private static final String UNEXPECTED_STATUS_CODE_MESSAGE = "Код ответа не соответствует ожидаемому";
 
     @DisplayName("Пользователь успешно создаётся")
     @Test
     public void userCreatedSuccessfully() {
 
-        String email = dataHelper.generateUniqueEmail();
+        Response createUserResponse = apiUserMethods.createUserWithDefaultParams();
 
-        String bodyWithValidData = new UserBuilder()
-                .withFirstName("SOME NAME")
-                .withLastName("SOME LAST NAME")
-                .withPassword("SOME PASSWORD")
-                .withUsername("SOME USERNAME")
-                .withEmail(email)
-                .build();
-
-        Response response = apiMethods.makePostRequest(Endpoints.USER, bodyWithValidData);
-        String responseBodyString = responseHelper.getResponseBody(response);
-
-        assertEquals(200, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertTrue(checker.responseHasField(responseBodyString, ID),
-                "Тело ответа не содержит параметр " + ID);
+        checker.checkResponseCodeEquals(200, createUserResponse);
+        checker.checkResponseHasField(ID, createUserResponse);
     }
 
     @DisplayName("Получаем ошибку при создании юзера без указания всех параметров")
@@ -44,12 +31,10 @@ public class CreateUserTest extends TestBase {
 
         String emptyBody = new RequestParamsBuilder().build();
 
-        Response response = apiMethods.makePostRequest(Endpoints.USER, emptyBody);
-        String responseBodyString = responseHelper.getResponseBody(response);
+        Response createUserResponse = apiUserMethods.createUser(emptyBody);
 
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertEquals(errorMessage, responseBodyString,
-                "Текст сообщения об отсутствии всех параметров не соответствует ожидаемому");
+        checker.checkResponseCodeEquals(400, createUserResponse);
+        checker.checkErrorMessagesEquals(errorMessage, createUserResponse);
     }
 
     @DisplayName("Получаем ошибку о создании юзера без указания email")
@@ -58,19 +43,17 @@ public class CreateUserTest extends TestBase {
 
         String errorMessage = "The following required params are missed: email";
 
-        String  bodyWithoutEmail = new UserBuilder()
-                .withFirstName("SOME NAME")
-                .withLastName("SOME LAST NAME")
-                .withPassword("SOME PASSWORD")
-                .withUsername("SOME USERNAME")
+        String  bodyWithoutEmail = new UserJsonBuilder()
+                .addFirstName("SOME NAME")
+                .addLastName("SOME LAST NAME")
+                .addPassword("SOME PASSWORD")
+                .addUsername("SOME USERNAME")
                 .build();
 
-        Response response = apiMethods.makePostRequest(Endpoints.USER, bodyWithoutEmail);
-        String responseBodyString = responseHelper.getResponseBody(response);
+        Response createUserResponse = apiUserMethods.createUser(bodyWithoutEmail);
 
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertEquals(errorMessage, responseBodyString,
-                "Текст сообщения об отсутствии параметра email не соответствует ожидаемому");
+        checker.checkResponseCodeEquals(400, createUserResponse);
+        checker.checkErrorMessagesEquals(errorMessage, createUserResponse);
     }
 
     @DisplayName("Получаем ошибку при создании юзера с уже занятым email")
@@ -80,22 +63,12 @@ public class CreateUserTest extends TestBase {
         String email = dataHelper.generateUniqueEmail();
         String errorMessage = "Users with email '" + email + "' already exists";
 
-        dataHelper.createDefaultUser(email, "password");
+        apiUserMethods.createUserWith(email);
 
-        String bodyWithAlreadyExistingEmail = new UserBuilder()
-                .withFirstName("SOME NAME")
-                .withLastName("SOME LAST NAME")
-                .withPassword("SOME PASSWORD")
-                .withUsername("SOME USERNAME")
-                .withEmail(email)
-                .build();
+        Response createUserWithExistingEmailResponse = apiUserMethods.createUserWith(email);
 
-        Response response = apiMethods.makePostRequest(Endpoints.USER, bodyWithAlreadyExistingEmail);
-        String responseBodyString = responseHelper.getResponseBody(response);
-
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertEquals(errorMessage, responseBodyString,
-                "Текст сообщения о занятости указанного email не соответствует ожидаемому");
+        checker.checkResponseCodeEquals(400, createUserWithExistingEmailResponse);
+        checker.checkErrorMessagesEquals(errorMessage, createUserWithExistingEmailResponse);
     }
 
     @DisplayName("Получаем ошибку при создании юзера с некорректной формой email")
@@ -104,20 +77,10 @@ public class CreateUserTest extends TestBase {
 
         String errorMessage = "Invalid email format";
 
-        String  bodyWithInvalidEmail = new UserBuilder()
-                .withFirstName("SOME NAME")
-                .withLastName("SOME LAST NAME")
-                .withPassword("SOME PASSWORD")
-                .withUsername("SOME USERNAME")
-                .withEmail("invalidemail@")
-                .build();
+        Response createUserResponse = apiUserMethods.createUserWith("invalidemail@");
 
-        Response response = apiMethods.makePostRequest(Endpoints.USER, bodyWithInvalidEmail);
-        String responseBodyString = responseHelper.getResponseBody(response);
-
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertEquals(errorMessage, responseBodyString,
-                "Текст сообщения о неверном формате email не соответствует ожидаемому");
+        checker.checkResponseCodeEquals(400, createUserResponse);
+        checker.checkErrorMessagesEquals(errorMessage, createUserResponse);
     }
 
     @DisplayName("Получаем ошибку при создании юзера со слишком коротким именем")
@@ -127,19 +90,17 @@ public class CreateUserTest extends TestBase {
         String errorMessage = "The value of 'username' field is too short";
         String email = dataHelper.generateUniqueEmail();
 
-        String bodyWithShortName = new UserBuilder()
-                .withFirstName("SOME NAME")
-                .withLastName("SOME LAST NAME")
-                .withPassword("SOME PASSWORD")
-                .withUsername("i")
-                .withEmail(email)
+        String bodyWithShortName = new UserJsonBuilder()
+                .addFirstName("SOME NAME")
+                .addLastName("SOME LAST NAME")
+                .addPassword("SOME PASSWORD")
+                .addUsername("i")
+                .addEmail(email)
                 .build();
 
-        Response response = apiMethods.makePostRequest(Endpoints.USER, bodyWithShortName);
-        String responseBodyString = responseHelper.getResponseBody(response);
+        Response createUserResponse = apiUserMethods.createUser(bodyWithShortName);
 
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        assertEquals(errorMessage, responseBodyString,
-                "Текст сообщения о слишком коротком username не соответствует ожидаемому");
+        checker.checkResponseCodeEquals(400, createUserResponse);
+        checker.checkErrorMessagesEquals(errorMessage, createUserResponse);
     }
 }

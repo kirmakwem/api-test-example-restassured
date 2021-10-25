@@ -1,23 +1,18 @@
 package org.example;
 
+import io.qameta.allure.Feature;
 import io.restassured.response.Response;
-import org.example.api.ApiParams;
-import org.example.builders.RequestParamsBuilder;
-import org.example.builders.UserBuilder;
+import org.example.builders.UserJsonBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
+import static org.example.CoreTest.FEATURE_USER_AUTH;
+import static org.example.api.core.ApiHeaders.SET_COOKIE;
+import static org.example.api.core.ApiHeaders.X_CSRF_TOKEN;
+import static org.example.api.core.ApiParams.*;
 
-import static org.example.api.ApiHeaders.SET_COOKIE;
-import static org.example.api.ApiHeaders.X_CSRF_TOKEN;
-import static org.example.api.ApiParams.*;
-import static org.junit.jupiter.api.Assertions.*;
-
+@Feature(FEATURE_USER_AUTH)
 public class UserAuthTest extends TestBase {
-
-    private static final String UNEXPECTED_STATUS_CODE_MESSAGE = "Код ответа не соответствует ожидаемому";
-    private static final String RESPONSE_BODY_DOESNT_CONTAIN_PARAM = "Тело ответа не содержит параметр ";
 
     @DisplayName("Успешно логинимся при отправке с корректных параметров")
     @Test
@@ -26,62 +21,40 @@ public class UserAuthTest extends TestBase {
         String email = dataHelper.generateUniqueEmail();
         String password = "password";
 
-        dataHelper.createDefaultUser(email, password);
+        apiUserMethods.createUserWith(email, password);
+        Response loginResponse = apiUserMethods.loginUser(email, password);
 
-        String loginBody = new RequestParamsBuilder()
-                .add(EMAIL, email)
-                .add(PASSWORD, password)
-                .build();
-
-        Response response = apiMethods.makePostRequest(Endpoints.LOGIN, loginBody);
-
-        assertEquals(200, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-
-        assertTrue(checker.responseHasToken(response),
-                "Ответ НЕ содержит хэдера " + X_CSRF_TOKEN);
-
-        assertTrue(checker.responseHasCookie(response),
-                "Ответ НЕ содержит хэдера " + SET_COOKIE);
+        checker.checkResponseCodeEquals(200, loginResponse);
+        checker.checkResponseHasHeader(X_CSRF_TOKEN, loginResponse);
+        checker.checkResponseHasHeader(SET_COOKIE, loginResponse);
     }
 
     @DisplayName("Получаем ошибку при логине с некорректными параметрами")
     @Test
     public void loginWithWrongUserData() {
 
-        String loginParams = new RequestParamsBuilder()
-                .add(USERNAME, "qw;knjwf")
-                .add(PASSWORD, "kldmwekldmweld")
-                .build();
+        Response loginResponse = apiUserMethods.loginUser("qw;knjwf", "kldmwekldmweld");
 
-        Response response = apiMethods.makePostRequest(Endpoints.LOGIN, loginParams);
-
-        assertEquals(400, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-
-        assertFalse(checker.responseHasToken(response),
-                "Ответ содержит хэдер " + X_CSRF_TOKEN);
-
-        assertFalse(checker.responseHasCookie(response),
-                "Ответ содержит хэдер " + SET_COOKIE);
+        checker.checkResponseCodeEquals(400, loginResponse);
+        checker.checkResponseDoesntHaveHeader(X_CSRF_TOKEN, loginResponse);
+        checker.checkResponseDoesntHaveHeader(SET_COOKIE, loginResponse);
     }
 
     @DisplayName("Получаем корректный ответ при запросе данных НЕавторизованного пользователя по его id")
     @Test
     public void getUnauthorizedUserById() {
 
-        String email = dataHelper.generateUniqueEmail();
-        String password = "password";
+        Response createUserResponse = apiUserMethods.createUserWithDefaultParams();
+        String userId = responseHelper.getFieldValue(ID, createUserResponse);
 
-        Response createUser = dataHelper.createDefaultUser(email, password);
-        String createUserString = responseHelper.getResponseBody(createUser);
-        String userId = responseHelper.getFieldValue(createUserString, ID);
+        Response getUserResponse = apiUserMethods.getUserDataAsNotBeingLogged(userId);
 
-        Response getUserResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId);
-        String responseAsString = responseHelper.getResponseBody(getUserResponse);
-
-        assertEquals(200, getUserResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-
-        assertTrue(checker.responseHasField(responseAsString, USERNAME),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + USERNAME);
+        checker.checkResponseCodeEquals(200, getUserResponse);
+        checker.checkResponseHasField(USERNAME, getUserResponse);
+        checker.checkResponseDoesntHaveField(FIRST_NAME, getUserResponse);
+        checker.checkResponseDoesntHaveField(LAST_NAME, getUserResponse);
+        checker.checkResponseDoesntHaveField(EMAIL, getUserResponse);
+        checker.checkResponseDoesntHaveField(ID, getUserResponse);
     }
 
     @DisplayName("Получаем корректный ответ при запросе данных авторизованного пользователя по его id")
@@ -90,36 +63,22 @@ public class UserAuthTest extends TestBase {
 
         String email = dataHelper.generateUniqueEmail();
         String password = "password";
+        apiUserMethods.createUserWith(email, password);
 
-        dataHelper.createDefaultUser(email, password);
+        Response loginResponse = apiUserMethods.loginUser(email, password);
+        checker.checkResponseCodeEquals(200, loginResponse);
 
-        String loginBody = new RequestParamsBuilder()
-                .add(ApiParams.EMAIL, email)
-                .add(ApiParams.PASSWORD, password)
-                .build();
-
-        Response loginResponse = apiMethods.makePostRequest(Endpoints.LOGIN , loginBody);
-        String loginResponseString = responseHelper.getResponseBody(loginResponse);
         String cookie = responseHelper.getCookies(loginResponse);
-        String token = responseHelper.getXcsrfToken(loginResponse);
-        String userId = responseHelper.getFieldValue(loginResponseString, USER_ID);
+        String token = responseHelper.getHeaderValue(X_CSRF_TOKEN, loginResponse);
+        String userId = responseHelper.getFieldValue(USER_ID, loginResponse);
 
-        Response getUserResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId, token, cookie);
-        String responseAsString = responseHelper.getResponseBody(getUserResponse);
+        Response getUserResponse = apiUserMethods.getUserDataAsBeingLogged(userId, token, cookie);
 
-        assertEquals(200, getUserResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-
-        assertTrue(checker.responseHasField(responseAsString, FIRST_NAME),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + FIRST_NAME);
-
-        assertTrue(checker.responseHasField(responseAsString, LAST_NAME),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + LAST_NAME);
-
-        assertTrue(checker.responseHasField(responseAsString, EMAIL),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + EMAIL);
-
-        assertTrue(checker.responseHasField(responseAsString, ID),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + ID);
+        checker.checkResponseCodeEquals(200, getUserResponse);
+        checker.checkResponseHasField(FIRST_NAME, getUserResponse);
+        checker.checkResponseHasField(LAST_NAME, getUserResponse);
+        checker.checkResponseHasField(EMAIL, getUserResponse);
+        checker.checkResponseHasField(ID, getUserResponse);
     }
 
     @DisplayName("Параметры пользователя успешно обновляются")
@@ -131,37 +90,26 @@ public class UserAuthTest extends TestBase {
         String newFirstName = "NEWFIRSTNAME";
         String newLastName = "NEWLASTNAME";
 
-        dataHelper.createDefaultUser(email, password);
+        apiUserMethods.createUserWith(email, password);
 
-        String loginBody = new RequestParamsBuilder()
-                .add(ApiParams.EMAIL, email)
-                .add(ApiParams.PASSWORD, password)
-                .build();
+        Response loginResponse = apiUserMethods.loginUser(email, password);
+        checker.checkResponseCodeEquals(200, loginResponse);
 
-        Response loginResponse = apiMethods.makePostRequest(Endpoints.LOGIN , loginBody);
-        assertEquals(200, loginResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-        String loginResponseString = responseHelper.getResponseBody(loginResponse);
         String cookie = responseHelper.getCookies(loginResponse);
-        String token = responseHelper.getXcsrfToken(loginResponse);
-        String userId = responseHelper.getFieldValue(loginResponseString, USER_ID);
+        String token = responseHelper.getHeaderValue(X_CSRF_TOKEN, loginResponse);
+        String userId = responseHelper.getFieldValue(USER_ID, loginResponse);
 
-        String newUserData = new UserBuilder()
-                .withFirstName(newFirstName)
-                .withLastName(newLastName)
+        String newUserData = new UserJsonBuilder()
+                .addFirstName(newFirstName)
+                .addLastName(newLastName)
                 .build();
+        Response updateUserResponse = apiUserMethods.updateUserData(newUserData, token, cookie);
+        checker.checkResponseCodeEquals(200, updateUserResponse);
 
-        Response response = apiMethods.makePutRequest(Endpoints.USER, newUserData, token, cookie);
-        assertEquals(200, response.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
+        Response getUserResponse = apiUserMethods.getUserDataAsBeingLogged(userId, token, cookie);
 
-        Response getResponse = apiMethods.makeGetRequest(Endpoints.USER + "/" + userId, token, cookie);
-        String getResponseString = responseHelper.getResponseBody(getResponse);
-
-        assertEquals(200, getResponse.statusCode(), UNEXPECTED_STATUS_CODE_MESSAGE);
-
-        assertEquals(newFirstName, responseHelper.getFieldValue(getResponseString, FIRST_NAME),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + FIRST_NAME);
-
-        assertEquals(newLastName, responseHelper.getFieldValue(getResponseString, LAST_NAME),
-                RESPONSE_BODY_DOESNT_CONTAIN_PARAM + LAST_NAME);
+        checker.checkResponseCodeEquals(200, getUserResponse);
+        checker.checkFieldValueEquals(newFirstName, FIRST_NAME, getUserResponse);
+        checker.checkFieldValueEquals(newLastName, LAST_NAME, getUserResponse);
     }
 }

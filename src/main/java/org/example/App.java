@@ -3,8 +3,6 @@ package org.example;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 
-import static io.restassured.RestAssured.given;
-
 /*
 Все запросы идут к API, полное описание которого находится здесь
 https://playground.learnqa.ru/api/map
@@ -16,6 +14,7 @@ public class App {
 //        getRequestWithQueryParams();
 //        postRequestWithBody();
 //        getHeader();
+//        sendHeader();
 //        getCookie();
 //        sendCookie();
     }
@@ -61,8 +60,8 @@ public class App {
 
         Response response = RestAssured.given()
                 .log().headers()
-                .header("Content-Type", "text/html")
-//                .header("My header", "My header value")
+//                .header("Content-Type", "text/html")
+                .header("My header", "My header value")
                 .get("https://playground.learnqa.ru/api/hello");
     }
 
@@ -87,9 +86,10 @@ public class App {
         String cookie = response.cookie("auth_cookie");
 
         Response response2 = RestAssured.given()
+                .log().cookies()
                 .cookie("auth_cookie", cookie)
                 .get("https://playground.learnqa.ru/api/check_auth_cookie");
 
-        System.out.println(response2.body());
+        System.out.println(response2.body().asString());
     }
 }
