@@ -1,8 +1,5 @@
-package org.example.api;
+package org.example.api.core;
 
-/*
-ApiParams - класс для хранения названий параметров запросов и ответов
- */
 public class ApiParams {
 
     public static final String USERNAME = "username";

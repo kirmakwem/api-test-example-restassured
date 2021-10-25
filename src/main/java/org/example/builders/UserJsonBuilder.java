@@ -3,39 +3,37 @@ package org.example.builders;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.example.api.ApiParams;
-
-import java.util.HashMap;
+import org.example.api.core.ApiParams;
 
 /*
 Класс для формирования параметров запроса на создание пользователя с помощью паттерна Builder
 https://vertex-academy.com/tutorials/ru/pattern-builder-java/
  */
-public class UserBuilder {
+public class UserJsonBuilder {
 
     private final ObjectNode userParams = new ObjectMapper().createObjectNode();
 
-    public UserBuilder withUsername(String username) {
+    public UserJsonBuilder addUsername(String username) {
         userParams.put(ApiParams.USERNAME, username);
         return this;
     }
 
-    public UserBuilder withPassword(String password) {
+    public UserJsonBuilder addPassword(String password) {
         userParams.put(ApiParams.PASSWORD, password);
         return this;
     }
 
-    public UserBuilder withFirstName(String firstName) {
+    public UserJsonBuilder addFirstName(String firstName) {
         userParams.put(ApiParams.FIRST_NAME, firstName);
         return this;
     }
 
-    public UserBuilder withLastName(String lastName) {
+    public UserJsonBuilder addLastName(String lastName) {
         userParams.put(ApiParams.LAST_NAME, lastName);
         return this;
     }
 
-    public UserBuilder withEmail(String email) {
+    public UserJsonBuilder addEmail(String email) {
         userParams.put(ApiParams.EMAIL, email);
         return this;
     }
