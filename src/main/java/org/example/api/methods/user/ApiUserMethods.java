@@ -2,8 +2,8 @@ package org.example.api.methods.user;
 
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
-import org.example.Endpoints;
 import org.example.api.core.ApiCoreRequests;
+import org.example.api.core.Endpoints;
 import org.example.builders.RequestParamsBuilder;
 import org.example.builders.UserJsonBuilder;
 import org.example.helpers.DataHelper;

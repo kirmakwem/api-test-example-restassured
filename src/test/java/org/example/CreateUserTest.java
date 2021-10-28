@@ -6,6 +6,8 @@ import org.example.builders.RequestParamsBuilder;
 import org.example.builders.UserJsonBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.example.CoreTest.FEATURE_USER_CREATE;
 import static org.example.api.core.ApiParams.ID;
@@ -72,12 +74,13 @@ public class CreateUserTest extends TestBase {
     }
 
     @DisplayName("Получаем ошибку при создании юзера с некорректной формой email")
-    @Test
-    public void emailNotValid() {
+    @ParameterizedTest()
+    @ValueSource(strings = {"invalidemail@", "wefwefwef", "mail.com"})
+    public void emailNotValid(String invalidEmail) {
 
         String errorMessage = "Invalid email format";
 
-        Response createUserResponse = apiUserMethods.createUserWith("invalidemail@");
+        Response createUserResponse = apiUserMethods.createUserWith(invalidEmail);
 
         checker.checkResponseCodeEquals(400, createUserResponse);
         checker.checkErrorMessagesEquals(errorMessage, createUserResponse);
