@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.api.methods.user.ApiUserMethods;
+import org.example.helpers.Checker;
 import org.example.helpers.DataHelper;
 import org.example.helpers.ResponseHelper;
 
